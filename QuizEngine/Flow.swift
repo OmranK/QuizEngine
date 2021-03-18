@@ -8,17 +8,20 @@
 import Foundation
 
 protocol Router {
-    typealias AnswerCallback = (String) -> Void
-    func routeTo(question: String, answerCallBack: @escaping AnswerCallback)
-    func routeTo(result: [String: String])
+    associatedtype Answer
+    associatedtype Question: Hashable
+
+    typealias AnswerCallback = (Answer) -> Void
+    func routeTo(question: Question, answerCallBack: @escaping (Answer) -> Void)
+    func routeTo(result: [Question: Answer])
 }
 
-class Flow {
-    private let router:  Router
-    private let questions: [String]
-    private var result: [String:String] = [:]
+class Flow <Question, Answer, R: Router> where R.Question == Question, R.Answer == Answer {
+    private let router:  R
+    private let questions: [Question]
+    private var result: [Question:Answer] = [:]
     
-    init(questions: [String], router: Router) {
+    init(questions: [Question], router: R) {
         self.router = router
         self.questions = questions
     }
@@ -33,7 +36,7 @@ class Flow {
         }
     }
     
-    private func nextCallBack(from question: String) -> Router.AnswerCallback {
+    private func nextCallBack(from question: Question) -> R.AnswerCallback {
         return { [weak self] in self?.routeNext(question, $0)
 
 //            if let strongSelf = self {
@@ -42,7 +45,7 @@ class Flow {
         }
     }
     
-    private func routeNext(_ question: String, _ answer: String) {
+    private func routeNext(_ question: Question, _ answer: Answer) {
         if let indexOfCurrentQuestion = questions.firstIndex(of: question) {
             result[question] = answer
             let nextQuestionIndex = indexOfCurrentQuestion + 1
